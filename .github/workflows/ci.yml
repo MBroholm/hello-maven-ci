@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
+# Required for pushing to GHCR
 permissions:
   contents: read
   packages: write
@@ -34,18 +35,15 @@ jobs:
     - name: Log in to GitHub Container Registry
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
-      with: ghcr.io
-      username: ${{ github.actor }}
-      password: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push Docker image
-      if: github.event_name == 'push' && 'github.ref' == 'refs/heads/main'
-      run:
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
         docker build -t ghcr.io/${{ github.repository_owner }}/hello-maven:latest .
         docker build -t ghcr.io/${{ github.repository_owner }}/hello-maven:${{ github.sha }} .
         docker push ghcr.io/${{ github.repository_owner }}/hello-maven:latest
         docker push ghcr.io/${{ github.repository_owner }}/hello-maven:${{ github.sha }}
-
-
-    - name: List Docker images
-      run: docker images | grep hello-maven
