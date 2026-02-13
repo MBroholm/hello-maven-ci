@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-# Required for pushing to GHCR
 permissions:
   contents: read
   packages: write
@@ -42,8 +41,10 @@ jobs:
 
     - name: Build and push Docker image
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: |
-        docker build -t ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:latest .
-        docker build -t ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:${{ github.sha }} .
-        docker push ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:latest
-        docker push ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:${{ github.sha }}
+      uses: docker/build-push-action@v4
+      with:
+        push: true
+        tags: |
+          ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:latest
+          ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:${{ github.sha }}
+        file: ./Dockerfile
