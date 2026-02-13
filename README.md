@@ -14,3 +14,9 @@ A simple Java project demonstrating CI/CD with Maven and GitHub Actions.
 
 ```bash
 docker run --rm ghcr.io/YOUR_USERNAME/hello-maven:latest
+```
+
+## Build Locally
+```
+docker run --rm -v "$(pwd)":/app -w /app maven:3.9-eclipse-temurin-17 mvn clean package
+```
