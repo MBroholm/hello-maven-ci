@@ -31,6 +31,13 @@ jobs:
     - name: Run tests
       run: mvn test
 
+    - name: Create lowercase owner output
+      id: owner
+      run: |
+        echo "owner_raw=${GITHUB_REPOSITORY%/*}"
+        owner_lower=$(echo "${GITHUB_REPOSITORY%/*}" | tr '[:upper:]' '[:lower:]')
+        echo "owner_lower=$owner_lower" >> $GITHUB_OUTPUT
+
     - name: Log in to GitHub Container Registry
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
@@ -45,6 +52,6 @@ jobs:
       with:
         push: true
         tags: |
-          ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:latest
-          ghcr.io/${{ toLower(github.repository_owner) }}/hello-maven:${{ github.sha }}
+          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:latest
+          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }}
         file: ./Dockerfile
