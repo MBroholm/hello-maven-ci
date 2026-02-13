@@ -15,40 +15,40 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java-version: ['17', '21']
+        java-version: [ '17', '21' ]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK ${{ matrix.java-version }}
-      uses: actions/setup-java@v4
-      with:
-        java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-        cache: maven
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+          cache: maven
 
-    - name: Build and test with Maven
-      run: mvn clean package
+      - name: Build and test with Maven
+        run: mvn clean package
 
-    # -------------------------------
-    # Quality checks only on Java 17
-    # -------------------------------
-    - name: Run Checkstyle
-      if: matrix.java-version == '17'
-      run: mvn checkstyle:check
-      continue-on-error: true
+      # -------------------------------
+      # Quality checks only on Java 17
+      # -------------------------------
+      - name: Run Checkstyle
+        if: matrix.java-version == '17'
+        run: mvn checkstyle:check
+        continue-on-error: true
 
-    - name: Generate coverage report
-      if: matrix.java-version == '17'
-      run: mvn jacoco:report
+      - name: Generate coverage report
+        if: matrix.java-version == '17'
+        run: mvn jacoco:report
 
-    - name: Upload coverage report
-      if: matrix.java-version == '17'
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: target/site/jacoco/
+      - name: Upload coverage report
+        if: matrix.java-version == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
     # -------------------------------
 
 
@@ -61,38 +61,38 @@ jobs:
       packages: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
 
-    - name: Build with Maven
-      run: mvn clean package
+      - name: Build with Maven
+        run: mvn clean package
 
-    - name: Create lowercase owner output
-      id: owner
-      run: |
-        echo "owner_raw=${GITHUB_REPOSITORY%/*}"
-        owner_lower=$(echo "${GITHUB_REPOSITORY%/*}" | tr '[:upper:]' '[:lower:]')
-        echo "owner_lower=$owner_lower" >> $GITHUB_OUTPUT
+      - name: Create lowercase owner output
+        id: owner
+        run: |
+          echo "owner_raw=${GITHUB_REPOSITORY%/*}"
+          owner_lower=$(echo "${GITHUB_REPOSITORY%/*}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lower=$owner_lower" >> $GITHUB_OUTPUT
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v4
-      with:
-        push: true
-        tags: |
-          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:latest
-          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }}
-        file: ./Dockerfile
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:latest
+            ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }}
+          file: ./Dockerfile
