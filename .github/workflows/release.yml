@@ -54,7 +54,7 @@ jobs:
           body: |
             ## Docker Image
             ```
-            docker pull ghcr.io/${{ github.repository_owner }}/hello-maven:${{ steps.version.outputs.version }}
+            docker pull ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ steps.version.outputs.version }}
             ```
             
             ## Changes
