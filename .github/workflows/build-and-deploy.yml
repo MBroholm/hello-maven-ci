@@ -50,8 +50,8 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ steps.env.outputs.tag }} .
-        docker build -t ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }} .
+        docker build -t ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ steps.env.outputs.tag }} \
+                     -t ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }} .
         docker push ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ steps.env.outputs.tag }}
         docker push ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }}
 
