@@ -70,8 +70,17 @@ jobs:
   # ---------------------------------------------------------
   nightly:
     if: github.event_name == 'schedule'
-    uses: ./.github/workflows/common-java.yml
-    with:
-      run_checkstyle: false
-      run_coverage: false
-      run_docker: false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run common Java workflow
+        uses: ./.github/workflows/common-java.yml
+        with:
+          run_checkstyle: false
+          run_coverage: false
+          run_docker: false
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "## Dependency Check" >> $GITHUB_STEP_SUMMARY
+          mvn versions:display-dependency-updates | grep -E "^\[INFO\].*->" >> $GITHUB_STEP_SUMMARY || echo "All dependencies up to date!" >> $GITHUB_STEP_SUMMARY
