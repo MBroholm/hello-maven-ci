@@ -1,0 +1,97 @@
+name: Common Java Workflow
+
+on:
+  workflow_call:
+    inputs:
+      run_checkstyle:
+        type: boolean
+        default: false
+      run_coverage:
+        type: boolean
+        default: false
+      run_docker:
+        type: boolean
+        default: false
+      environment:
+        type: string
+        default: ""
+    outputs:
+      owner:
+        value: ${{ jobs.common.outputs.owner }}
+      tag:
+        value: ${{ jobs.common.outputs.tag }}
+
+jobs:
+  common:
+    runs-on: ubuntu-latest
+    outputs:
+      owner: ${{ steps.owner.outputs.owner }}
+      tag: ${{ steps.env.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Normalize owner to lowercase
+        id: owner
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Build and test
+        run: mvn clean package
+
+      - name: Run Checkstyle
+        if: ${{ inputs.run_checkstyle }}
+        run: mvn checkstyle:check
+        continue-on-error: true
+
+      - name: Generate coverage report
+        if: ${{ inputs.run_coverage }}
+        run: mvn jacoco:report
+
+      - name: Upload coverage report
+        if: ${{ inputs.run_coverage }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+
+      - name: Determine environment
+        id: env
+        if: ${{ inputs.run_docker }}
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        if: ${{ inputs.run_docker }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ inputs.run_docker }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        if: ${{ inputs.run_docker }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ steps.env.outputs.tag }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

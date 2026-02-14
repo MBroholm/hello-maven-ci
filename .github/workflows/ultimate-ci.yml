@@ -21,180 +21,55 @@ jobs:
   # ---------------------------------------------------------
   pr-check:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build and test
-        run: mvn clean package
-
-      - name: Report result
-        run: |
-          if [ $? -eq 0 ]; then
-            echo "## ✅ All Tests Passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ❌ Tests Failed" >> $GITHUB_STEP_SUMMARY
-          fi
+    uses: ./.github/workflows/common-java.yml
+    with:
+      run_checkstyle: false
+      run_coverage: false
+      run_docker: false
 
   # ---------------------------------------------------------
-  # 2. Full CI (Quality + Build + Deploy)
+  # 2. CI Build + Deploy
   # ---------------------------------------------------------
   build:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Normalize owner to lowercase
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build and test
-        run: mvn clean package
-
-      - name: Run Checkstyle
-        run: mvn checkstyle:check
-        continue-on-error: true
-
-      - name: Generate coverage report
-        run: mvn jacoco:report
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: target/site/jacoco/
-
-      - name: Determine environment
-        id: env
-        run: |
-          if [[ "${GITHUB_REF#refs/heads/}" == "main" ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-            echo "tag=latest" >> $GITHUB_OUTPUT
-          else
-            echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "tag=staging" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ steps.env.outputs.tag }}
-            ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Deployment Summary
-        run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: ${{ steps.env.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Tag: ${{ steps.env.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/common-java.yml
+    with:
+      run_checkstyle: true
+      run_coverage: true
+      run_docker: true
+      environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
   # ---------------------------------------------------------
   # 3. Release Workflow (Triggered by tags)
   # ---------------------------------------------------------
   release:
     if: startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/common-java.yml
+    with:
+      run_checkstyle: false
+      run_coverage: false
+      run_docker: true
+      environment: production
+
+  create_release:
+    needs: release
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Normalize owner to lowercase
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build and test
-        run: mvn clean package
-
-      - name: Extract version
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push release image
-        run: |
-          docker build -t ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ steps.version.outputs.version }} .
-          docker push ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ steps.version.outputs.version }}
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ steps.version.outputs.version }}
+          name: Release ${{ github.ref_name }}
           body: |
             ## Docker Image
-            docker pull ghcr.io/${{ steps.owner.outputs.owner }}/hello-maven:${{ steps.version.outputs.version }}
-
-            ## Changes
-            See commit history.
+            docker pull ghcr.io/${{ needs.release.outputs.owner }}/hello-maven:${{ github.ref_name }}
 
   # ---------------------------------------------------------
   # 4. Nightly Build
   # ---------------------------------------------------------
   nightly:
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Check dependency updates
-        run: mvn versions:display-dependency-updates
-
-      - name: Build and test
-        run: mvn clean package
-
-      - name: Dependency Summary
-        run: |
-          echo "## Dependency Check" >> $GITHUB_STEP_SUMMARY
-          mvn versions:display-dependency-updates | grep -E "->" >> $GITHUB_STEP_SUMMARY || echo "All dependencies up to date!" >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/common-java.yml
+    with:
+      run_checkstyle: false
+      run_coverage: false
+      run_docker: false
