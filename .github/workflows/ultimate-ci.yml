@@ -64,6 +64,11 @@ jobs:
             ```
             docker pull ghcr.io/${{ needs.release.outputs.owner }}/hello-maven:${{ github.ref_name }}
             ```
+            
+            ## Changes
+            See commit history for details.
+          draft: false
+          prerelease: false
 
   # ---------------------------------------------------------
   # 4. Nightly Build
