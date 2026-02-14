@@ -1,0 +1,50 @@
+name: Optimized Docker Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create lowercase owner output
+      id: owner
+      run: |
+        echo "owner_raw=${GITHUB_REPOSITORY%/*}"
+        owner_lower=$(echo "${GITHUB_REPOSITORY%/*}" | tr '[:upper:]' '[:lower:]')
+        echo "owner_lower=$owner_lower" >> $GITHUB_OUTPUT
+
+    - name: Build and push with cache
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:latest
+          ghcr.io/${{ steps.owner.outputs.owner_lower }}/hello-maven:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
