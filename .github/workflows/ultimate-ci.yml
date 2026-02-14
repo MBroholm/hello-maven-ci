@@ -61,7 +61,9 @@ jobs:
           name: Release ${{ github.ref_name }}
           body: |
             ## Docker Image
+            ```
             docker pull ghcr.io/${{ needs.release.outputs.owner }}/hello-maven:${{ github.ref_name }}
+            ```
 
   # ---------------------------------------------------------
   # 4. Nightly Build
