@@ -13,7 +13,7 @@ A simple Java project demonstrating CI/CD with Maven and GitHub Actions.
 ## Run Locally
 
 ```bash
-docker run --rm ghcr.io/YOUR_USERNAME/hello-maven:latest
+docker run --rm ghcr.io/mbroholm/hello-maven:latest
 ```
 
 ## Build Locally
