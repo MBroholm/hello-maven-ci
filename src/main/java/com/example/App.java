@@ -14,7 +14,3 @@ public class App {
         return a * b;
     }
 }
-// staging change
-// cache test
-// cache test
-// cache test
