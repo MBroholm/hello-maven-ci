@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '25 13 * * *'
   workflow_dispatch:
 
 permissions:
@@ -75,15 +75,17 @@ jobs:
   # ---------------------------------------------------------
   nightly:
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/common-java.yml
+    with:
+      run_checkstyle: false
+      run_coverage: false
+      run_docker: false
 
+  dependency-check:
+    needs: nightly
+    runs-on: ubuntu-latest
     steps:
-      - name: Run common Java workflow
-        uses: ./.github/workflows/common-java.yml
-        with:
-          run_checkstyle: false
-          run_coverage: false
-          run_docker: false
+      - uses: actions/checkout@v4
 
       - name: Check for outdated dependencies
         run: |
